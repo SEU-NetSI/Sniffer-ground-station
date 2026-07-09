@@ -50,7 +50,7 @@ void printMetaInfo(const Sniffer_Meta_t *meta) {
     printf("  Sender Address: %" PRIu16 "\n", meta->senderAddress);
     printf("  Sequence Number: %" PRIu16 "\n", meta->seqNumber);
     printf("  Message Length: %" PRIu16 "\n", meta->msgLength);
-    printf("  RX Time: %" PRIu64 "\n", meta->rxTime);
+    printf("  RX Time: 0x%016" PRIX64 "\n", meta->rxTime);
 }
 
 int read_exact_usb(libusb_device_handle *device_handle, uint8_t *buffer, int length, const char *label) {
