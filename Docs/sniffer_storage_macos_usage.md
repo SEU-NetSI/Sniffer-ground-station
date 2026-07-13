@@ -17,7 +17,9 @@
 
 ## 2. 一次性安装、构建与测试
 
-从项目根目录执行：
+Mac 和 Windows 使用同一个 `sniffer_storage/makefile`，两端都直接运行普通的 `make`，不需要 `make -f`。Makefile 先检查 Windows 的 `OS=Windows_NT`，否则通过 `uname -s` 识别 macOS；Homebrew 和 pkg-config 只会在 macOS 分支中执行。
+
+macOS 从项目根目录执行：
 
 ```bash
 cd /Users/holden/Documents/lab_file/drone-communication-simulation-system
@@ -32,6 +34,24 @@ make clean
 make
 make test
 ```
+
+macOS 的普通 `make` 会生成：
+
+```text
+sniffer_storage
+pc_to_uwb
+twoway_transport
+```
+
+Windows 仍在 `sniffer_storage/` 目录执行：
+
+```bash
+make clean
+make
+make test
+```
+
+Windows 分支继续使用原始的 `ground_control_windows.c`、`pc_to_uwb.c` 和 `twoway_transport.c`，不引用 macOS 专用源文件，也不要求安装 Homebrew。Windows 可执行文件在 MinGW 环境中带 `.exe` 后缀。
 
 自动绘图固定使用项目根目录下的 `.venv/bin/python`。因此不要只在 `sniffer_storage/` 内部或其他虚拟环境中安装 Matplotlib。
 
@@ -366,7 +386,7 @@ Bulk IN endpoint 的最高位必须为 `1`，例如 `0x81`。
 
 普通 Sniffer 采集只需要 Bulk IN，不需要 `--send-hex`。
 
-当前仓库没有经过验证的设备端 Sniffer 控制命令、解析 handler 或 ACK 协议。即使 raw Bulk OUT transfer 成功，也只能证明 USB 字节传输完成，不能证明固件识别或执行了命令。
+`sniffer_storage --send-hex` 只发送调用者提供的原始字节。即使 raw Bulk OUT transfer 成功，也只能证明 USB 字节传输完成，不能证明固件识别或执行了命令。
 
 在没有确认已安装固件的准确命令格式之前，不要随意执行：
 
@@ -374,7 +394,68 @@ Bulk IN endpoint 的最高位必须为 `1`，例如 `0x81`。
 ./sniffer_storage --send-hex ...
 ```
 
-## 12. 相关实现
+## 12. macOS 发送与双向程序
+
+`pc_to_uwb` 和 `twoway_transport` 在 macOS 直接由原始源文件构建，没有单独的 `_macos.c` 版本。两者自动打开枚举到的第一台 `0483:5740` 设备，使用 interface `0`、Bulk OUT `0x01` 和 Bulk IN `0x81`。
+
+这两个程序不支持 `--device BUS:ADDRESS`。如果连接了多台相同设备，先断开其他设备，避免程序自动选择到错误目标。
+
+### 12.1 单次发送程序
+
+准确语法是：
+
+```bash
+./pc_to_uwb <dest_addr> "<hex_payload>" [seq]
+```
+
+当前配套固件源码把这类下行固定封装为 `UWB_GETPC_MESSAGE`；接收端对此类型只打印收到的内容，不执行控制命令。以下命令使用广播地址 `0xffff`，发送零长度 payload，可用于最小链路测试：
+
+```bash
+./pc_to_uwb 0xffff "" 1
+```
+
+非空 payload 的业务语义由接收固件决定。发送非空内容前，仍应由固件负责人确认目的地址、payload 和预期行为。
+
+程序发送 18 字节下行 meta，随后发送 payload。meta 使用 magic `0x0000CCCC`，包含目的地址、序号、payload 长度和发送时间；当前 macOS/Windows 主机均按小端布局发送。程序等待的 ACK 固定为：
+
+```text
+AC C0 00 01
+```
+
+出现 `Sent ... bytes to UWB dest ...` 只证明 meta 和 payload 的 Bulk OUT 已完整提交；随后出现 `Received downlink ACK from CF firmware` 才证明主机收到了上述 ACK。固件在本机 UWB TX 完成回调中生成该 ACK；它不携带目的地址、序号或远端业务响应，因此只能证明 PC → USB 设备 → 本机 UWB 发射这一段完成，不能单独证明远端 UWB 节点已经收到或完成应用层处理。
+
+### 12.2 双向程序
+
+交互模式：
+
+```bash
+./twoway_transport
+```
+
+程序打开设备并开始保存 Bulk IN 数据后，可输入：
+
+```text
+send <dest_addr> <hex_payload> [seq]
+quit
+```
+
+交互命令按空白分词，因此 payload 内不要包含空格，可使用冒号分隔，例如 `01:02:03:04`。也可在启动时发送一次：
+
+```bash
+./twoway_transport <dest_addr> "<hex_payload>" [seq]
+```
+
+与单次发送程序相同的零长度最小链路测试为：
+
+```bash
+./twoway_transport 0xffff "" 2
+```
+
+启动参数发送完成后程序仍会进入交互模式，需要输入 `quit` 正常释放 interface。该程序会同时接收普通上行 Sniffer 帧并保存文件，但当前协议没有把上行帧与某次下行请求可靠关联，因此“收到任意上行帧”不等于应用层双向闭环成功。
+
+除上述零长度 GETPC 链路测试外，当前源码没有定义 ping、echo、query 等具有业务响应的 payload。源码 usage 中的 `0xffff "01 02 03 04"` 只是格式示例，业务语义未知，不应直接当作硬件测试命令。要验证远端应用层闭环，仍需由固件负责人给出非空业务 payload 以及可与请求对应的预期响应。
+
+## 13. 相关实现
 
 - `sniffer_storage/sniffer_storage.c`：命令行参数、采集流程、信号退出和自动绘图触发条件；
 - `sniffer_storage/libusb_transport.c`：设备枚举、选择、interface claim、endpoint 校验和 Bulk transfer；
