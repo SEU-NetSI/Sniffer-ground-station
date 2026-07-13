@@ -21,7 +21,6 @@ endif
 # ==========================================
 # 2. 编译选项融合
 # ==========================================
-# 加入了你的 -I.. 和 -DSNIFFER_STORAGE_COMPILE
 CPPFLAGS += -I. -I.. $(LIBUSB_CFLAGS)
 CPPFLAGS += -D_POSIX_C_SOURCE=200809L -DSNIFFER_STORAGE_COMPILE
 CFLAGS ?= -O2
@@ -38,7 +37,6 @@ TEST_TARGET    := test_sniffer_storage
 
 .PHONY: all clean test
 
-# 默认一次性编译所有工具
 all: $(TARGET_STORAGE) $(TARGET_PC_UWB) $(TARGET_TWOWAY)
 
 # ==========================================
@@ -63,7 +61,6 @@ $(TARGET_STORAGE): $(OBJECTS_STORAGE)
 $(TARGET_PC_UWB): pc_to_uwb.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LDLIBS)
 
-# 注意：twoway_transport 链接时追加了 -pthread
 $(TARGET_TWOWAY): twoway_transport.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LDLIBS) -pthread
 

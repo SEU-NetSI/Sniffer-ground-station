@@ -1,4 +1,15 @@
 data/
 sniffer_storage/sniffer_storage
+sniffer_storage/*.o
+sniffer_storage/test_sniffer_storage
+sniffer_storage/*.dSYM/
 center
 drone
+.venv/
+__pycache__/
+*.py[cod]
+.matplotlib/
+.DS_Store
+outputs_binary/
+sniffer_storage/raw_sensor_data_*.bin
+testdata/*.bin
