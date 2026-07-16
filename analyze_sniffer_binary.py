@@ -16,6 +16,7 @@ MAGIC = 0x0000BBBB
 MAGIC_BYTES = struct.pack("<I", MAGIC)
 MAX_MESSAGE_SIZE = 4096
 DEFAULT_TICK_HZ = 499.2e6 * 128.0
+DEFAULT_PERIOD_MS = 30.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,7 +117,7 @@ def read_binary(path: Path, *, max_message_size: int = MAX_MESSAGE_SIZE) -> Pars
 
 def analyze_records(records: Iterable[PacketRecord], *, timestamp_bits: int = 40,
                     tick_hz: float = DEFAULT_TICK_HZ) -> tuple[PacketRecord, ...]:
-    """Globally unwrap timestamps, then use the first captured record as time zero."""
+    """Unwrap FIFO receiver timestamps, then use the first record as time zero."""
     if not 1 <= timestamp_bits <= 64:
         raise ValueError("timestamp_bits must be in [1, 64]")
     if tick_hz <= 0:
@@ -124,14 +125,15 @@ def analyze_records(records: Iterable[PacketRecord], *, timestamp_bits: int = 40
     ordered = sorted(records, key=lambda record: record.arrival_order)
     mask = (1 << timestamp_bits) - 1
     wrap = 1 << timestamp_bits
-    threshold = 1 << (timestamp_bits - 1)
     wrap_count = 0
     previous: int | None = None
     first_continuous: int | None = None
     analyzed: list[PacketRecord] = []
     for record in ordered:
         current = record.rx_timestamp_ticks & mask
-        if previous is not None and current < previous and previous - current > threshold:
+        # Records are emitted FIFO from one DW3000 receiver clock. A long gap can
+        # cross a 40-bit wrap while producing a decrease smaller than half a wrap.
+        if previous is not None and current < previous:
             wrap_count += 1
         continuous = current + wrap_count * wrap
         if first_continuous is None:
@@ -259,7 +261,7 @@ def plot_phase(records: Sequence[PacketRecord], output_path: Path, period_ms: fl
     fig, ax = plt.subplots(figsize=(8, 8))
     for index, (source, group) in enumerate(sorted(groups.items())):
         x, y = phase_coordinates(group, period_ms)
-        ax.plot(x, y, ".", label=f"rng_src={source}", color=plt.cm.tab10(index % 10), markersize=6)
+        ax.plot(x, y, ".", label=f"rng_src={source}", color=plt.cm.tab10(index % 10), markersize=1)
     ax.set_xlim(0, period_ms)
     ax.set_xlabel("time % period (ms)")
     ax.set_ylabel(f"time / period   (period = {period_ms:.6f} ms)")
@@ -276,7 +278,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path)
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--period-ms", type=float, default=60.0)
+    parser.add_argument("--period-ms", type=float, default=DEFAULT_PERIOD_MS)
     parser.add_argument("--timestamp-bits", type=int, default=40)
     parser.add_argument("--tick-hz", type=float, default=DEFAULT_TICK_HZ)
     parser.add_argument("--max-message-size", type=int, default=MAX_MESSAGE_SIZE)

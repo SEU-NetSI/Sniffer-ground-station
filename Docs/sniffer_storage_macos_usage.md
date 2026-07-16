@@ -326,7 +326,7 @@ open outputs_binary/capture_period30/phase.png
 | `--timeout-ms` | `5000` | 单次 USB transfer 超时，不是总采集时长 |
 | `--max-payload` | `4096` | 接受的最大 payload 长度 |
 | `--max-records` | `0` | 不限制记录数量 |
-| `--plot-period-ms` | `60` | 相位图默认公共周期 |
+| `--plot-period-ms` | `30` | 相位图默认公共周期 |
 
 ## 10. 常见问题
 

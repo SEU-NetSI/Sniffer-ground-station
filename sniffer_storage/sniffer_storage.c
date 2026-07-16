@@ -67,7 +67,7 @@ static void usage(FILE *stream, const char *program) {
             "      --print-stats       Print final detailed capture statistics\n"
             "      --plot-after-capture  Generate phase.png after capture (macOS)\n"
             "      --plot-output DIR   Auto-plot output directory\n"
-            "      --plot-period-ms N  Auto-plot period (default: 60)\n"
+            "      --plot-period-ms N  Auto-plot period (default: 30)\n"
             "      --list-devices      List matching VID/PID devices without opening\n"
             "      --send-hex HEX      Send exact raw bytes on Bulk OUT before capture\n"
             "      --send HEX          Alias for --send-hex\n"
@@ -285,7 +285,7 @@ int main(int argc, char **argv) {
             .device_address = -1,
         },
         .max_payload = SNIFFER_DEFAULT_MAX_PAYLOAD,
-        .plot_period_ms = 60.0,
+        .plot_period_ms = 30.0,
         .print_records = 1,
     };
     int parsed = parse_options(argc, argv, &options);

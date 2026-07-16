@@ -33,6 +33,19 @@ class BinarySnifferTests(unittest.TestCase):
         self.assertAlmostEqual(analyzed[-1].rx_time_ms,
                                200 * 1000.0 / subject.DEFAULT_TICK_HZ)
 
+    def test_long_gap_wrap_with_small_backward_jump(self):
+        records = (
+            subject.PacketRecord(0, 0, subject.MAGIC, 600, 5, 1, 0),
+            subject.PacketRecord(1, 18, subject.MAGIC, 500, 5, 2, 0),
+        )
+        analyzed = subject.analyze_records(records, timestamp_bits=10, tick_hz=1000.0)
+        self.assertEqual([record.rx_time_cont_ticks for record in analyzed], [600, 1524])
+        self.assertEqual([record.rx_time_ms for record in analyzed], [0.0, 924.0])
+        self.assertEqual(analyzed[1].delta_ms, 924.0)
+
+    def test_default_period_matches_current_firmware(self):
+        self.assertEqual(subject.DEFAULT_PERIOD_MS, 30.0)
+
     def test_truncation_and_resynchronization(self):
         truncated = subject.parse_binary(frame()[:-1])
         self.assertEqual(truncated.errors[0].kind, "truncated_payload")
@@ -72,14 +85,14 @@ class BinarySnifferTests(unittest.TestCase):
         analyzed = subject.analyze_records(parsed.records)
         self.assertEqual([record.rx_timestamp_ticks for record in analyzed], [123, 123])
 
-    def test_group_delta_uses_chronological_order(self):
+    def test_group_delta_is_source_local(self):
         records = (
-            subject.PacketRecord(0, 0, subject.MAGIC, 300, 5, 1, 0),
-            subject.PacketRecord(1, 18, subject.MAGIC, 100, 5, 2, 0),
-            subject.PacketRecord(2, 36, subject.MAGIC, 200, 5, 3, 0),
+            subject.PacketRecord(0, 0, subject.MAGIC, 100, 5, 1, 0),
+            subject.PacketRecord(1, 18, subject.MAGIC, 200, 8, 1, 0),
+            subject.PacketRecord(2, 36, subject.MAGIC, 300, 5, 2, 0),
         )
         analyzed = subject.analyze_records(records, timestamp_bits=40, tick_hz=1000.0)
-        self.assertEqual([record.delta_ms for record in analyzed], [100.0, None, 100.0])
+        self.assertEqual([record.delta_ms for record in analyzed], [None, None, 200.0])
 
 
 if __name__ == "__main__":

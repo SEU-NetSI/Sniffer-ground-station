@@ -62,14 +62,15 @@ TARGET_STORAGE     := sniffer_storage
 TARGET_PC_UWB      := pc_to_uwb
 TARGET_TWOWAY      := twoway_transport
 TARGET_GROUND_CTRL := ground_control_windows
+TARGET_GROUND_ADMIN := ground_admin
 TEST_TARGET        := test_sniffer_storage
 
 .PHONY: all clean test
 
 ifeq ($(PLATFORM),windows)
-ALL_TARGETS := $(TARGET_STORAGE) $(TARGET_PC_UWB) $(TARGET_TWOWAY) $(TARGET_GROUND_CTRL)
+ALL_TARGETS := $(TARGET_STORAGE) $(TARGET_PC_UWB) $(TARGET_TWOWAY) $(TARGET_GROUND_CTRL) $(TARGET_GROUND_ADMIN)
 else
-ALL_TARGETS := $(TARGET_STORAGE) $(TARGET_PC_UWB) $(TARGET_TWOWAY)
+ALL_TARGETS := $(TARGET_STORAGE) $(TARGET_PC_UWB) $(TARGET_TWOWAY) $(TARGET_GROUND_ADMIN)
 endif
 
 all: $(ALL_TARGETS)
@@ -101,6 +102,9 @@ endif
 $(TARGET_TWOWAY): twoway_transport.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LDLIBS) -pthread
 
+$(TARGET_GROUND_ADMIN): ground_admin.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LDLIBS)
+
 ifeq ($(PLATFORM),windows)
 $(TARGET_GROUND_CTRL): ground_control_windows.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $@ $< $(LDLIBS)
@@ -118,6 +122,6 @@ test: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
 clean:
-	rm -f $(TARGET_STORAGE) $(TARGET_PC_UWB) $(TARGET_TWOWAY) $(TARGET_GROUND_CTRL) $(TEST_TARGET) $(OBJECTS_STORAGE)
+	rm -f $(TARGET_STORAGE) $(TARGET_PC_UWB) $(TARGET_TWOWAY) $(TARGET_GROUND_CTRL) $(TARGET_GROUND_ADMIN) $(TEST_TARGET) $(OBJECTS_STORAGE)
 	rm -rf $(TEST_TARGET).dSYM
 	rm -f *.exe
