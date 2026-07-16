@@ -8,23 +8,22 @@
 
 ## Windows 与 macOS 接口对应关系
 
-来源文件已经使用 libusb，而没有直接使用 `windows.h`、`HANDLE`、WinUSB API、COM、Winsock、Windows 线程、`Sleep` 或 Visual Studio 专用函数。Windows 依赖 WinUSB/libusbK 驱动，macOS 使用系统上的 libusb；应用层的设备枚举、open、claim interface、control transfer、Bulk OUT/IN 和 release/close 均保持同一套 libusb API。程序没有文件路径、线程或高精度计时平台差异。
+程序使用 libusb，不直接依赖 `windows.h`、`HANDLE`、WinUSB API、COM、Winsock、Windows 线程、`Sleep` 或 Visual Studio 专用函数。Windows 依赖 WinUSB/libusbK 驱动，macOS 使用系统上的 libusb；应用层的设备枚举、open、claim interface、control transfer、Bulk OUT/IN 和 release/close 均使用同一套 libusb API。程序没有文件路径、线程或高精度计时平台差异。
 
 Windows 上仍可在 MSYS2 UCRT64 中构建；接口 0 必须绑定兼容 libusb 的 WinUSB/libusbK 驱动。macOS 不需要也不应改成 `/dev/cu.*` 串口。
 
-## 本次修改
+## 跨平台设计与工程集成
 
-- 将来源文件导入为 `sniffer_storage/ground_admin.c`，导入后先用 `cmp` 和 SHA-256 确认副本一致，且未修改 Downloads 中的原件。
-- 保留原命令表、字节序、magic、广播目的地址、sequence、payload、分包方式、link-select vendor request 和 ACK 格式。
-- 增加 `--device BUS:ADDRESS`（同时保留原来的匹配序号）、`--list-devices`、`--interface`、`--endpoint-in`、`--endpoint-out` 和 `--timeout-ms`。
-- 错误信息现在包含 interface、endpoint、libusb 错误名和错误码；退出路径释放 interface、device handle 和 libusb context。
-- 在现有 `sniffer_storage/makefile` 中加入 `ground_admin`，没有创建第二套构建系统。
+- `sniffer_storage/ground_admin.c` 保留命令表、字节序、magic、广播目的地址、sequence、payload、分包方式、link-select vendor request 和 ACK 格式。
+- 命令行支持 `--device BUS:ADDRESS`（同时兼容匹配序号）、`--list-devices`、`--interface`、`--endpoint-in`、`--endpoint-out` 和 `--timeout-ms`。
+- 错误信息包含 interface、endpoint、libusb 错误名和错误码；退出路径会释放 interface、device handle 和 libusb context。
+- `sniffer_storage/makefile` 提供跨平台 `ground_admin` 构建目标，与工程现有构建流程保持一致。
 
 ## 构建依赖
 
 需要 C11 编译器、GNU Make、pkg-config 和 libusb 1.0。Makefile 优先使用 `pkg-config`，并用 `brew --prefix libusb` 兼容 Apple Silicon 的 `/opt/homebrew`，没有写死 `/usr/local`。
 
-本机已检测到 Homebrew、pkg-config 2.5.1 和 libusb 1.0.30，无需安装。其他机器缺失时执行：
+macOS 缺少 libusb 或 pkg-config 时，可通过 Homebrew 安装：
 
 ```sh
 brew install libusb pkg-config
@@ -35,7 +34,6 @@ brew install libusb pkg-config
 从仓库根目录执行：
 
 ```sh
-cd /Users/holden/Documents/lab_file/drone-communication-simulation-system
 make -C sniffer_storage ground_admin
 make -C sniffer_storage sniffer_storage
 ```
@@ -69,7 +67,6 @@ make -C sniffer_storage -B sniffer_storage
 先用程序自身枚举（这是获得 libusb BUS:ADDRESS 最准确的方法）：
 
 ```sh
-cd /Users/holden/Documents/lab_file/drone-communication-simulation-system
 ./sniffer_storage/ground_admin --list-devices
 ```
 
@@ -104,6 +101,6 @@ system_profiler SPUSBDataType
 - `libusb header not found` 或链接找不到 `usb_*`：运行 `brew install libusb pkg-config`，再确认 `pkg-config --cflags --libs libusb-1.0` 有输出。
 - `No matching USB device found`：确认连接和 VID/PID，运行 `--list-devices`；若有多个设备，使用 `--device BUS:ADDRESS`。
 - `could not open` / `claim interface failed`：关闭 cfclient 和其他占用程序，检查 interface 参数；Windows 需绑定 WinUSB/libusbK。
-- `USB link-select request failed: LIBUSB_ERROR_TIMEOUT`：当前实机上该 control request 超时后 Bulk OUT/IN 仍成功。`--timeout-ms` 同时控制该请求和 Bulk transfer，设为 5000 会让每次启动额外等待约 5 秒；可使用默认 1000，并用交互模式避免每条命令重复启动。
+- `USB link-select request failed: LIBUSB_ERROR_TIMEOUT`：如果随后 Bulk OUT/IN 和 ACK 正常，该 control request 超时可能不是致命错误。`--timeout-ms` 同时控制该请求和 Bulk transfer，增大该值也会增加启动等待时间；可先使用默认值，并用交互模式避免每条命令重复启动。
 - `Required endpoint`、Bulk IN/OUT 错误或 timeout：用设备描述符核实 interface 和端点，确认 IN 端点含方向位 `0x80`，OUT 端点不含该位。
 - ACK timeout：确认固件支持该下行协议和 `AC C0 00 01` ACK；只有明确不需要 ACK 时才使用 `--no-ack`。
