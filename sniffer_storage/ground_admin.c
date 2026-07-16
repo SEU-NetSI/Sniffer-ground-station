@@ -507,6 +507,7 @@ static bool prepareUsbInterface(libusb_device_handle *handle,
         return false;
     }
 
+#if !defined(__APPLE__)
     /* Crazyflie vendor request: route the USB link to the application. */
     result = libusb_control_transfer(handle,
                                      LIBUSB_ENDPOINT_OUT |
@@ -523,6 +524,7 @@ static bool prepareUsbInterface(libusb_device_handle *handle,
                 "Warning: USB link-select request failed: %s; continuing.\n",
                 libusb_error_name(result));
     }
+#endif
 
     return true;
 }
@@ -534,6 +536,7 @@ static void restoreUsbInterface(libusb_device_handle *handle,
         return;
     }
 
+#if !defined(__APPLE__)
     /* Switch the Crazyflie back to its radio CRTP link when possible. */
     (void)libusb_control_transfer(handle,
                                   LIBUSB_ENDPOINT_OUT |
@@ -545,6 +548,7 @@ static void restoreUsbInterface(libusb_device_handle *handle,
                                   NULL,
                                   0,
                                   options->timeoutMs);
+#endif
     (void)libusb_release_interface(handle, options->interfaceNumber);
 }
 
