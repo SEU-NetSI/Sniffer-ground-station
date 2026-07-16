@@ -99,18 +99,6 @@ system_profiler SPUSBDataType
 
 不带 `--command` 会进入交互模式。不要同时运行 cfclient 或其他占用同一 USB interface 的程序。`reboot`、`ota`、飞行控制类命令都不是只读操作。
 
-## 已验证内容
-
-- macOS 使用 Apple Silicon Homebrew libusb 1.0.30 实际编译成功，编译器没有产生警告。
-- `--help`、`--list-devices`、参数错误处理和 `--dry-run --command arm` 均正常退出，无崩溃或无限等待。
-- dry-run 输出确认原始 18 字节 metadata 和 4 字节 payload 未改变。
-- 原 `sniffer_storage` 已强制重编译成功；已有 19 项 sniffer storage 测试全部通过。
-- 实机曾在 `device=2:6`、VID:PID `0483:5740`、interface 0、Bulk OUT `0x01`、Bulk IN `0x81` 上发送 `ota` event 8，并收到预期 ACK `AC C0 00 01`，验证了 USB Bulk OUT/IN 和固件 UWB TX 请求路径。
-
-## 尚未验证的硬件内容
-
-ACK 能证明发送端固件接受并处理了 UWB TX 请求，但不能单独证明所有广播目标均收到或执行命令；目标节点的 OTA 状态仍需结合其日志或指示灯确认。Windows 构建和驱动绑定也未在本机验证。
-
 ## 常见错误
 
 - `libusb header not found` 或链接找不到 `usb_*`：运行 `brew install libusb pkg-config`，再确认 `pkg-config --cflags --libs libusb-1.0` 有输出。
