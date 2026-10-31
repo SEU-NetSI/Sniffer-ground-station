@@ -20,6 +20,11 @@
 #define RECEIVE_STAGING_SIZE 16384u
 #define WRITE_TIMEOUT_LIMIT 3u
 
+/* Measured from consecutive packets in the 2026-10-31 captures.
+ * A nominal 30 ms plotting period adds about -39.75 us of phase drift per cycle.
+ * This changes only the plot reference; --plot-period-ms can override it. */
+#define DEFAULT_PLOT_PERIOD_MS 29.96025
+
 typedef struct {
     LibusbDeviceOptions usb;
     const char *output_path;
@@ -67,7 +72,7 @@ static void usage(FILE *stream, const char *program) {
             "      --print-stats       Print final detailed capture statistics\n"
             "      --plot-after-capture  Generate phase.png after capture (macOS)\n"
             "      --plot-output DIR   Auto-plot output directory\n"
-            "      --plot-period-ms N  Auto-plot period (default: 30)\n"
+            "      --plot-period-ms N  Auto-plot period in ms (default: %.8g)\n"
             "      --list-devices      List matching VID/PID devices without opening\n"
             "      --send-hex HEX      Send exact raw bytes on Bulk OUT before capture\n"
             "      --send HEX          Alias for --send-hex\n"
@@ -77,7 +82,7 @@ static void usage(FILE *stream, const char *program) {
             "Warning: --send-hex confirms USB transfer only. This repository contains\n"
             "no verified device-side Sniffer command handler; supply only a frame that\n"
             "the installed firmware explicitly supports.\n",
-            program);
+            program, DEFAULT_PLOT_PERIOD_MS);
 }
 
 static int parse_unsigned(const char *text, uint64_t maximum, uint64_t *value) {
@@ -285,7 +290,7 @@ int main(int argc, char **argv) {
             .device_address = -1,
         },
         .max_payload = SNIFFER_DEFAULT_MAX_PAYLOAD,
-        .plot_period_ms = 30.0,
+        .plot_period_ms = DEFAULT_PLOT_PERIOD_MS,
         .print_records = 1,
     };
     int parsed = parse_options(argc, argv, &options);
