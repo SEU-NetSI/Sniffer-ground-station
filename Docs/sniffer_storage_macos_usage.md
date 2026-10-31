@@ -53,7 +53,7 @@ make test
 
 Windows 分支继续使用原始的 `ground_control_windows.c`、`pc_to_uwb.c` 和 `twoway_transport.c`，不引用 macOS 专用源文件，也不要求安装 Homebrew。Windows 可执行文件在 MinGW 环境中带 `.exe` 后缀。
 
-自动绘图固定使用项目根目录下的 `.venv/bin/python`。因此不要只在 `sniffer_storage/` 内部或其他虚拟环境中安装 Matplotlib。
+分析脚本支持 Python 3.9 及以上版本。自动绘图固定使用项目根目录下的 `.venv/bin/python`。因此不要只在 `sniffer_storage/` 内部或其他虚拟环境中安装 Matplotlib。
 
 可以用以下命令查看全部参数：
 

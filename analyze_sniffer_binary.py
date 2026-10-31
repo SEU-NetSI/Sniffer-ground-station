@@ -19,7 +19,7 @@ DEFAULT_TICK_HZ = 499.2e6 * 128.0
 DEFAULT_PERIOD_MS = 30.0
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class PacketRecord:
     arrival_order: int
     input_offset: int
@@ -34,14 +34,14 @@ class PacketRecord:
     delta_ms: float | None = None
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class ParseError:
     input_offset: int
     kind: str
     detail: str
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class ParseResult:
     records: tuple[PacketRecord, ...]
     errors: tuple[ParseError, ...]
